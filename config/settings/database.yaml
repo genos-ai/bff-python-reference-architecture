@@ -1,0 +1,42 @@
+# =============================================================================
+# Database Configuration
+# =============================================================================
+# Available options:
+#   host            - Database host (string)
+#   port            - Database port (integer)
+#   name            - Database name (string)
+#   user            - Database user (string)
+#   pool_size       - Connection pool size (integer)
+#   max_overflow    - Max connections above pool_size (integer)
+#   pool_timeout    - Seconds to wait for connection (integer)
+#   pool_recycle    - Seconds before connection recycled (integer)
+#   echo            - Log SQL statements (boolean)
+#   echo_pool       - Log connection pool events (boolean)
+#   redis           - Redis connection settings (object)
+#     host          - Redis host (string)
+#     port          - Redis port (integer)
+#     db            - Redis database number (integer)
+#     broker        - Taskiq broker settings (object)
+#       queue_name  - Redis queue name for task dispatch (string)
+#       result_expiry_seconds - Task result TTL in Redis (integer)
+# =============================================================================
+
+host: "localhost"
+port: 5432
+name: "bff_web"
+user: "bff_app"
+
+pool_size: 5
+max_overflow: 10
+pool_timeout: 30
+pool_recycle: 1800
+echo: false
+echo_pool: false
+
+redis:
+  host: "localhost"
+  port: 6379
+  db: 0
+  broker:
+    queue_name: "journal_tasks"
+    result_expiry_seconds: 3600

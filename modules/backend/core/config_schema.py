@@ -1,0 +1,301 @@
+"""
+Configuration Schemas.
+
+Pydantic models defining the expected structure of each YAML config file.
+Used by AppConfig to validate configuration at load time. If a YAML file
+has missing keys, wrong types, or unknown fields, a clear ValidationError
+is raised at startup instead of a cryptic KeyError deep in application code.
+
+Each top-level class corresponds to one file in config/settings/:
+    ApplicationSchema  -> application.yaml
+    DatabaseSchema     -> database.yaml
+    LoggingSchema      -> logging.yaml
+    FeaturesSchema     -> features.yaml
+    SecuritySchema     -> security.yaml
+    ObservabilitySchema -> observability.yaml
+    ConcurrencySchema  -> concurrency.yaml
+    EventsSchema       -> events.yaml
+"""
+
+from pydantic import BaseModel, ConfigDict
+
+
+class _StrictBase(BaseModel):
+    """Base with extra='forbid' so unknown YAML keys are caught immediately."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+# =============================================================================
+# application.yaml
+# =============================================================================
+
+
+class ServerSchema(_StrictBase):
+    host: str
+    port: int
+
+
+class CorsSchema(_StrictBase):
+    origins: list[str]
+
+
+class PaginationSchema(_StrictBase):
+    default_limit: int
+    max_limit: int
+
+
+class TimeoutsSchema(_StrictBase):
+    database: int
+    external_api: int
+    background: int
+
+
+class ApplicationSchema(_StrictBase):
+    name: str
+    version: str
+    description: str
+    environment: str
+    debug: bool
+    api_prefix: str
+    docs_enabled: bool
+    server: ServerSchema
+    cors: CorsSchema
+    pagination: PaginationSchema
+    timeouts: TimeoutsSchema
+
+
+# =============================================================================
+# database.yaml
+# =============================================================================
+
+
+class BrokerSchema(_StrictBase):
+    queue_name: str
+    result_expiry_seconds: int
+
+
+class RedisSchema(_StrictBase):
+    host: str
+    port: int
+    db: int
+    broker: BrokerSchema
+
+
+class DatabaseSchema(_StrictBase):
+    host: str
+    port: int
+    name: str
+    user: str
+    pool_size: int
+    max_overflow: int
+    pool_timeout: int
+    pool_recycle: int
+    echo: bool
+    echo_pool: bool
+    redis: RedisSchema
+
+
+# =============================================================================
+# logging.yaml
+# =============================================================================
+
+
+class ConsoleHandlerSchema(_StrictBase):
+    enabled: bool
+
+
+class FileHandlerSchema(_StrictBase):
+    enabled: bool
+    path: str
+    max_bytes: int
+    backup_count: int
+
+
+class HandlersSchema(_StrictBase):
+    console: ConsoleHandlerSchema
+    file: FileHandlerSchema
+
+
+class LoggingSchema(_StrictBase):
+    level: str
+    format: str
+    handlers: HandlersSchema
+
+
+# =============================================================================
+# features.yaml
+# =============================================================================
+
+
+class FeaturesSchema(_StrictBase):
+    auth_magic_link_enabled: bool
+    auth_rate_limit_enabled: bool
+    api_detailed_errors: bool
+    api_request_logging: bool
+    security_headers_enabled: bool
+    security_cors_enforce_production: bool
+    background_tasks_enabled: bool
+    events_enabled: bool
+    events_publish_enabled: bool
+    observability_tracing_enabled: bool
+    observability_metrics_enabled: bool
+
+
+# =============================================================================
+# security.yaml
+# =============================================================================
+
+
+class JwtSchema(_StrictBase):
+    algorithm: str
+    access_token_expire_minutes: int
+    refresh_token_expire_days: int
+    audience: str
+
+
+class ApiRateLimitSchema(_StrictBase):
+    requests_per_minute: int
+    requests_per_hour: int
+
+
+class RateLimitingSchema(_StrictBase):
+    api: ApiRateLimitSchema
+
+
+class RequestLimitsSchema(_StrictBase):
+    max_body_size_bytes: int
+    max_header_size_bytes: int
+
+
+class SecurityHeadersSchema(_StrictBase):
+    x_content_type_options: str
+    x_frame_options: str
+    referrer_policy: str
+    hsts_enabled: bool
+    hsts_max_age: int
+
+
+class SecretsValidationSchema(_StrictBase):
+    app_secret_min_length: int
+
+
+class CorsEnforcementSchema(_StrictBase):
+    enforce_in_production: bool
+    allow_methods: list[str]
+    allow_headers: list[str]
+
+
+class SecuritySchema(_StrictBase):
+    jwt: JwtSchema
+    rate_limiting: RateLimitingSchema
+    request_limits: RequestLimitsSchema
+    headers: SecurityHeadersSchema
+    secrets_validation: SecretsValidationSchema
+    cors: CorsEnforcementSchema
+
+
+# =============================================================================
+# observability.yaml
+# =============================================================================
+
+
+class TracingSchema(_StrictBase):
+    enabled: bool
+    service_name: str
+    exporter: str
+    otlp_endpoint: str
+    sample_rate: float
+
+
+class MetricsSchema(_StrictBase):
+    enabled: bool
+
+
+class HealthChecksSchema(_StrictBase):
+    ready_timeout_seconds: int
+    detailed_auth_required: bool
+
+
+class ObservabilitySchema(_StrictBase):
+    tracing: TracingSchema
+    metrics: MetricsSchema
+    health_checks: HealthChecksSchema
+
+
+# =============================================================================
+# concurrency.yaml
+# =============================================================================
+
+
+class ThreadPoolSchema(_StrictBase):
+    max_workers: int
+
+
+class ProcessPoolSchema(_StrictBase):
+    max_workers: int
+
+
+class SemaphoresSchema(_StrictBase):
+    database: int
+    redis: int
+    external_api: int
+    llm: int
+
+
+class ShutdownSchema(_StrictBase):
+    drain_seconds: int
+
+
+class ConcurrencySchema(_StrictBase):
+    thread_pool: ThreadPoolSchema
+    process_pool: ProcessPoolSchema
+    semaphores: SemaphoresSchema
+    shutdown: ShutdownSchema
+
+
+# =============================================================================
+# events.yaml
+# =============================================================================
+
+
+class EventBrokerSchema(_StrictBase):
+    type: str
+
+
+class EventStreamsSchema(_StrictBase):
+    default_maxlen: int
+
+
+class ConsumerCircuitBreakerSchema(_StrictBase):
+    fail_max: int
+    timeout_duration: int
+
+
+class ConsumerRetrySchema(_StrictBase):
+    max_attempts: int
+    backoff_multiplier: int
+    backoff_max: int
+
+
+class ConsumerConfigSchema(_StrictBase):
+    stream: str
+    group: str
+    criticality: str
+    circuit_breaker: ConsumerCircuitBreakerSchema
+    retry: ConsumerRetrySchema
+    processing_timeout: int
+
+
+class EventDlqSchema(_StrictBase):
+    enabled: bool
+    stream_prefix: str
+
+
+class EventsSchema(_StrictBase):
+    broker: EventBrokerSchema
+    streams: EventStreamsSchema
+    consumers: dict[str, ConsumerConfigSchema]
+    dlq: EventDlqSchema
+
+

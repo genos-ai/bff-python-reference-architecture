@@ -1,0 +1,29 @@
+# =============================================================================
+# Feature Flags Configuration
+# =============================================================================
+# Security principle: features are disabled by default.
+# Each must be explicitly enabled.
+# =============================================================================
+
+# ── Authentication ──
+auth_magic_link_enabled: true
+auth_rate_limit_enabled: true
+
+# ── API Behavior ──
+api_detailed_errors: false
+api_request_logging: true
+
+# ── Security Enforcement ──
+security_headers_enabled: true
+security_cors_enforce_production: true
+
+# ── Background Tasks ──
+background_tasks_enabled: true
+
+# ── Event Architecture ──
+events_enabled: false
+events_publish_enabled: false
+
+# ── Observability ──
+observability_tracing_enabled: false
+observability_metrics_enabled: false

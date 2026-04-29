@@ -1,0 +1,147 @@
+"""
+FastAPI Application Entry Point.
+
+BFF Web Skeleton backend.
+"""
+
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from modules.backend.api import health
+from modules.backend.api.v1 import router as api_v1_router
+from modules.backend.core.config import get_app_config
+from modules.backend.core.exception_handlers import register_exception_handlers
+from modules.backend.core.logging import get_logger, setup_logging
+from modules.backend.core.middleware import RequestContextMiddleware
+
+logger = get_logger(__name__)
+
+_app: FastAPI | None = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Application lifespan manager — startup and graceful shutdown."""
+    app_config = get_app_config()
+    setup_logging(level=app_config.logging.level)
+
+    if app_config.features.observability_tracing_enabled:
+        _init_tracing(app, app_config)
+
+    if app_config.features.observability_metrics_enabled:
+        _init_metrics(app)
+
+    logger.info(
+        "Application starting",
+        extra={
+            "app_name": app_config.application.name,
+            "env": app_config.application.environment,
+        },
+    )
+    yield
+
+    logger.info("Application shutting down — draining pools")
+    from modules.backend.core.concurrency import shutdown_pools
+
+    await shutdown_pools()
+    logger.info("Application shutdown complete")
+
+
+def _init_tracing(app: FastAPI, app_config) -> None:
+    """Initialize OpenTelemetry tracing if enabled and SDK is installed."""
+    try:
+        from opentelemetry import trace
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+        from opentelemetry.sdk.resources import Resource
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+        tracing_config = app_config.observability.tracing
+
+        resource = Resource.create(
+            {
+                "service.name": tracing_config.service_name,
+                "service.version": app_config.application.version,
+                "deployment.environment": app_config.application.environment,
+            }
+        )
+
+        provider = TracerProvider(resource=resource)
+        exporter = OTLPSpanExporter(endpoint=tracing_config.otlp_endpoint)
+        provider.add_span_processor(BatchSpanProcessor(exporter))
+        trace.set_tracer_provider(provider)
+
+        FastAPIInstrumentor.instrument_app(app)
+
+        logger.info(
+            "OpenTelemetry tracing initialized",
+            extra={"endpoint": tracing_config.otlp_endpoint},
+        )
+    except ImportError:
+        logger.warning("OpenTelemetry SDK not installed — tracing disabled")
+
+
+def _init_metrics(app: FastAPI) -> None:
+    """Initialize Prometheus metrics endpoint if enabled and library is installed."""
+    try:
+        from prometheus_fastapi_instrumentator import Instrumentator
+
+        Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+        logger.info("Prometheus metrics endpoint enabled at /metrics")
+    except ImportError:
+        logger.warning("prometheus-fastapi-instrumentator not installed — metrics disabled")
+
+
+def create_app() -> FastAPI:
+    """Create and configure the FastAPI application."""
+    app_config = get_app_config()
+    app_settings = app_config.application
+
+    app = FastAPI(
+        title=app_settings.name,
+        description=app_settings.description,
+        version=app_settings.version,
+        docs_url="/docs" if app_settings.docs_enabled else None,
+        redoc_url="/redoc" if app_settings.docs_enabled else None,
+        lifespan=lifespan,
+    )
+
+    app.add_middleware(RequestContextMiddleware)
+
+    cors_origins = app_settings.cors.origins
+    if cors_origins:
+        cors_security = app_config.security.cors
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=cors_origins,
+            allow_credentials=True,
+            allow_methods=cors_security.allow_methods,
+            allow_headers=cors_security.allow_headers,
+        )
+
+    register_exception_handlers(app)
+
+    app.include_router(health.router, tags=["health"])
+    app.include_router(api_v1_router, prefix="/api/v1")
+
+    return app
+
+
+def get_app() -> FastAPI:
+    """Get the application instance (lazy initialization)."""
+    global _app
+    if _app is None:
+        _app = create_app()
+    return _app
+
+
+# For uvicorn: `uvicorn modules.backend.main:app`
+def __getattr__(name: str) -> FastAPI:
+    """Support lazy access to `app` for uvicorn compatibility."""
+    if name == "app":
+        return get_app()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

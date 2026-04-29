@@ -1,0 +1,49 @@
+# =============================================================================
+# Security Configuration
+# =============================================================================
+
+# ── JWT Token Settings ──
+jwt:
+  algorithm: "HS256"
+  access_token_expire_minutes: 30
+  refresh_token_expire_days: 7
+  audience: "bff-web-api"
+
+# ── Rate Limiting (per user) ──
+rate_limiting:
+  api:
+    requests_per_minute: 60
+    requests_per_hour: 1000
+
+# ── Request Payload Constraints ──
+request_limits:
+  max_body_size_bytes: 5242880
+  max_header_size_bytes: 8192
+
+# ── Security Response Headers ──
+headers:
+  x_content_type_options: "nosniff"
+  x_frame_options: "DENY"
+  referrer_policy: "strict-origin-when-cross-origin"
+  hsts_enabled: false
+  hsts_max_age: 31536000
+
+# ── Secrets Validation (checked at startup) ──
+secrets_validation:
+  app_secret_min_length: 32
+
+# ── CORS Production Enforcement ──
+cors:
+  enforce_in_production: true
+  allow_methods:
+    - "GET"
+    - "POST"
+    - "PATCH"
+    - "DELETE"
+    - "OPTIONS"
+  allow_headers:
+    - "Authorization"
+    - "Content-Type"
+    - "X-Request-ID"
+    - "X-Frontend-ID"
+    - "Idempotency-Key"

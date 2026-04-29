@@ -1,0 +1,29 @@
+# =============================================================================
+# Application Configuration
+# =============================================================================
+
+name: "BFF Web Skeleton"
+version: "0.1.0"
+description: "Backend-for-Frontend Python web reference architecture"
+environment: "development"
+debug: true
+
+api_prefix: "/api"
+docs_enabled: true
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+cors:
+  origins:
+    - "http://localhost:5173"
+
+pagination:
+  default_limit: 50
+  max_limit: 100
+
+timeouts:
+  database: 10
+  external_api: 30
+  background: 120

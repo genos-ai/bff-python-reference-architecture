@@ -1,0 +1,14 @@
+[project]
+name = "bff-python-web-skeleton"
+version = "0.1.0"
+description = "Backend-for-Frontend Python web reference architecture skeleton."
+readme = "README.md"
+requires-python = ">=3.14"
+
+[tool.black]
+line-length = 100
+
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["modules"]
